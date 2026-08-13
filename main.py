@@ -189,10 +189,10 @@ class App:
 
     def render_stall(self):
         self.screen.blit(self.bg, (0, 0))
-        self.text("Pasar Interaktif", 30, config.TEXT, (self.w // 2, self.h - 120),
+        self.text("Pasar Interaktif", 30, config.TEXT, (self.w // 2, self.h - 100),
                   shadow=True)
         self.text("klik item untuk lihat sejarahnya", config.HINT_FONT,
-                  config.MUTED, (self.w // 2, self.h - 78))
+                  config.TEXT, (self.w // 2, self.h - 58), shadow=True)
 
     def render_item(self, item, hovered):
         cx, cy = self.grid_to_screen(item["x"], item["y"])
