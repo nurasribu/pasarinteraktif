@@ -35,7 +35,6 @@ class App:
     def __init__(self, fullscreen):
         pygame.init()
         self.fullscreen = fullscreen
-        self.pointer = MousePointer(config.SCREEN_SIZE)
         self.screen = None
         self.clock = pygame.time.Clock()
         self.selected = None  # item dict, or None = idle
@@ -48,18 +47,21 @@ class App:
         self._gradient = None
         self._overlay = None
         self._open_window()
+        self.pointer = MousePointer(self.screen.get_size())
         self._load_assets()
         self._compose_bg()
 
     def _open_window(self):
-        flags = pygame.FULLSCREEN if self.fullscreen else 0
         if IN_WASM:
-            flags = pygame.SCALED
-        try:
-            self.screen = pygame.display.set_mode(config.SCREEN_SIZE, flags)
-        except Exception:
-            self.screen = pygame.display.set_mode(config.SCREEN_SIZE,
-                                                  pygame.SCALED)
+            self.screen = pygame.display.set_mode(config.WEB_SCREEN_SIZE)
+        else:
+            flags = pygame.FULLSCREEN if self.fullscreen else 0
+            try:
+                self.screen = pygame.display.set_mode(config.SCREEN_SIZE,
+                                                      flags)
+            except Exception:
+                self.screen = pygame.display.set_mode(config.SCREEN_SIZE,
+                                                      pygame.SCALED)
         pygame.display.set_caption("Pasar Interaktif")
         pygame.mouse.set_visible(False)
         self.w, self.h = self.screen.get_size()

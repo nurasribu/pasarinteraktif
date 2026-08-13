@@ -16,6 +16,7 @@ def asset_path(rel):
 
 # Window
 SCREEN_SIZE = (1920, 1080)
+WEB_SCREEN_SIZE = (1280, 720)
 FULLSCREEN = True
 FPS = 60
 
@@ -53,8 +54,7 @@ ITEMS = [
         "history": (
             "PLACEHOLDER COPY. Wau is the giant moon-kite of the Malay "
             "east coast, named for its crescent shape. Flown after the "
-            "rice harvest, it once appeared on the RM50 banknote. "
-            "Swap this text in config.py."
+            "rice harvest, it once appeared on the RM50 banknote."
         ),
     },
     {
@@ -66,8 +66,7 @@ ITEMS = [
         "history": (
             "PLACEHOLDER COPY. Gasing is the Malay spinning top from "
             "Kelantan and Malacca. Champion tops weigh up to five "
-            "kilograms and spins can last over two hours. "
-            "Swap this text in config.py."
+            "kilograms and spins can last over two hours."
         ),
     },
     {
@@ -79,8 +78,7 @@ ITEMS = [
         "history": (
             "PLACEHOLDER COPY. Kompang is a shallow single-headed frame "
             "drum played in groups at weddings and processions, keeping "
-            "rhythm for silat and zapin. "
-            "Swap this text in config.py."
+            "rhythm for silat and zapin."
         ),
     },
 ]
