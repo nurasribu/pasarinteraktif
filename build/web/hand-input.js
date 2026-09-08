@@ -87,6 +87,7 @@ class HandInput {
 
   _onResults(results) {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+      this._prevPinch = false;
       if (this._active && this._lostAt === 0) {
         this._lostAt = Date.now();
       }
