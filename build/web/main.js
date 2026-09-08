@@ -107,8 +107,9 @@
     return { w: Math.max(1, Math.round(im.width * scale)), h: Math.max(1, Math.round(im.height * scale)) };
   };
 
-  // ---------- input (pointer events; swappable for webcam later) ----------
-  const input = (() => {
+  // ---------- input ----------
+  // Mouse fallback — always available
+  const mouseInput = (() => {
     let gx = 0;
     let gy = 0;
     let clicked = false;
@@ -139,6 +140,19 @@
       },
     };
   })();
+
+  // Hand tracking — auto-detect webcam
+  const handInput = new HandInput();
+  handInput.init().then((ok) => {
+    if (ok) console.log("Hand tracking active — pinch to click");
+    else console.log("Hand tracking unavailable — using mouse");
+  });
+
+  // Unified input: hand wins when active, mouse is fallback
+  const input = {
+    position: () => (handInput.active ? handInput.position() : mouseInput.position()),
+    justClicked: () => (handInput.active ? handInput.justClicked() : mouseInput.justClicked()),
+  };
 
   // ---------- rendering ----------
   const hitTest = ([gx, gy]) => {

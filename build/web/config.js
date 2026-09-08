@@ -73,3 +73,11 @@ const FONT_URL = "assets/fonts/press_start_2p.ttf";
 const FONT_FAMILY = "Press Start 2P";
 const BACKDROP_IMAGE = "assets/items/bg.jpg";
 const BG_IMAGE = "assets/items/PASAR1.png";
+
+// Hand tracking tuning
+const HAND_CONFIG = {
+  SMOOTHING: 0.35,       // EMA alpha (0 = frozen, 1 = no smoothing)
+  PINCH_THRESHOLD: 0.06, // Normalised pinch distance to trigger click
+  CLICK_COOLDOWN: 400,   // Ms minimum between clicks
+  MIRROR_X: true,        // Flip x-axis for selfie/mirror view
+};
