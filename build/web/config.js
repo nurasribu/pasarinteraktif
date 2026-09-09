@@ -29,7 +29,7 @@ const ITEMS = [
     name: "WAU",
     x: 1.0,
     y: 3.0,
-    image: "assets/items/wau2.png",
+    image: "assets/items/WAU2.png",
     color: "#E85C5C",
     history:
       "PLACEHOLDER COPY. Wau is the giant moon-kite of the Malay " +

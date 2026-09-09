@@ -49,7 +49,7 @@ ITEMS = [
         "name": "WAU",
         "x": 1.0,
         "y": 3.0,
-        "image": os.path.join("assets", "items", "wau2.png"),
+        "image": os.path.join("assets", "items", "WAU2.png"),
         "color": (232, 92, 92),
         "history": (
             "PLACEHOLDER COPY. Wau is the giant moon-kite of the Malay "
