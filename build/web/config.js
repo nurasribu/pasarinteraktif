@@ -29,7 +29,7 @@ const ITEMS = [
     name: "WAU",
     x: 1.0,
     y: 3.0,
-    image: "assets/items/wau.png",
+    image: "assets/items/wau2.png",
     color: "#E85C5C",
     history:
       "PLACEHOLDER COPY. Wau is the giant moon-kite of the Malay " +
@@ -40,7 +40,7 @@ const ITEMS = [
     name: "GASING",
     x: 3.0,
     y: 5.0,
-    image: "assets/items/gasing.png",
+    image: "assets/items/gasing2.png",
     color: "#5C96E8",
     history:
       "PLACEHOLDER COPY. Gasing is the Malay spinning top from " +

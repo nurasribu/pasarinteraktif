@@ -49,7 +49,7 @@ ITEMS = [
         "name": "WAU",
         "x": 1.0,
         "y": 3.0,
-        "image": os.path.join("assets", "items", "wau.png"),
+        "image": os.path.join("assets", "items", "wau2.png"),
         "color": (232, 92, 92),
         "history": (
             "PLACEHOLDER COPY. Wau is the giant moon-kite of the Malay "
@@ -61,7 +61,7 @@ ITEMS = [
         "name": "GASING",
         "x": 3.0,
         "y": 5.0,
-        "image": os.path.join("assets", "items", "gasing.png"),
+        "image": os.path.join("assets", "items", "gasing2.png"),
         "color": (92, 150, 232),
         "history": (
             "PLACEHOLDER COPY. Gasing is the Malay spinning top from "
