@@ -38,13 +38,14 @@ Real art, layered background:
 
 - `assets/items/bg.jpg` — backdrop photo, scaled-to-cover (supports animated
   GIFs too; `BACKDROP_BLUR_RADIUS` in config for slight blur).
-- `assets/items/PASAR1.png` — static stall art on top of the backdrop
+- `assets/items/PASAR2.png` — static stall art on top of the backdrop
   (1920×1080, RGBA; transparent regions reveal the backdrop below).
 
-Item art: each item points at a PNG in `config.py` (`image` key) — WAU
-(`assets/items/wau.png`), GASING (`gasing.png`), KOMPANG (`kompang.png`).
-Scales to fit the item radius, nearest-neighbour. Falls back to a coloured
-circle if a PNG is missing. Pixel font: `assets/fonts/press_start_2p.ttf`
+Item art: each item points at a PNG in `config.py` (`image` key) — all
+sprites live in `assets/newassets/` (WAU, SAPE, TEBA LOI, BAHULU,
+KUIH CINCIN, KOMPANG, BAKUL SARAWAK). Scales to fit the item radius,
+nearest-neighbour. Falls back to a coloured circle if a PNG is missing.
+Pixel font: `assets/fonts/press_start_2p.ttf`
 (fallback: pygame default font).
 
 ## Upgrade path (webcam / joystick)

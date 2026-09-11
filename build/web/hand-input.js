@@ -19,6 +19,8 @@ class HandInput {
     this._hands = null;
     this._camera = null;
     this._ready = false;
+    this._lastTip = null;
+    this.onActivity = null;
   }
 
   get active() {
@@ -103,6 +105,16 @@ class HandInput {
     const lm = results.multiHandLandmarks[0];
     const indexTip = lm[8];
     const thumbTip = lm[4];
+
+    // Report activity only when the hand (cursor finger) actually moves, so
+    // the idle help still shows when the camera is on but nothing is going on.
+    const moved =
+      this._lastTip === null ||
+      Math.hypot(indexTip.x - this._lastTip.x, indexTip.y - this._lastTip.y) >= 0.004;
+    if (moved) {
+      this._lastTip = { x: indexTip.x, y: indexTip.y };
+      if (this.onActivity) this.onActivity();
+    }
 
     // Index finger tip → grid position (flipped x for mirror)
     const rawX = HAND_CONFIG.MIRROR_X ? 1 - indexTip.x : indexTip.x;

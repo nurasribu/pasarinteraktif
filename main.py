@@ -1,9 +1,10 @@
 import asyncio
 import sys
+import time
 
 import pygame
 try:
-    from PIL import Image, ImageFilter, ImageSequence
+    from PIL import Image, ImageEnhance, ImageFilter, ImageSequence
     HAS_PIL = True
 except Exception:
     HAS_PIL = False
@@ -70,6 +71,9 @@ class App:
         self.radius = min(self.scale_x, self.scale_y) * config.ITEM_RADIUS
         self.art_size = int(min(self.scale_x, self.scale_y) * config.ITEM_ART_SIZE)
         self.bg = pygame.Surface((self.w, self.h))
+        self.help_visible = False
+        self.last_action = time.time()
+        self.last_gpos = None
 
     def _set_mode(self):
         self._open_window()
@@ -81,17 +85,39 @@ class App:
                 config.asset_path(config.BG_IMAGE)).convert_alpha()
         except Exception:
             self._overlay = None
+        try:
+            self._roof = pygame.image.load(
+                config.asset_path(config.ROOF_IMAGE)).convert_alpha()
+        except Exception:
+            self._roof = None
         for item in config.ITEMS:
             try:
-                item["_surf"] = pygame.image.load(
+                surf = pygame.image.load(
                     config.asset_path(item["image"])).convert_alpha()
+                if item.get("rot"):
+                    # pygame rotates counter-clockwise for positive angles,
+                    # so clockwise needs the negated degrees
+                    surf = pygame.transform.rotate(surf, -item["rot"])
+                item["_surf"] = surf
             except Exception:
                 item["_surf"] = None
+            item["_art_k"] = float(item.get("scale") or 1.0)
+            item["_glow"] = self._build_glow(item.get("_surf"), item["_art_k"])
+            try:
+                item["_desc"] = pygame.image.load(
+                    config.asset_path(item.get("desc"))).convert_alpha()
+            except Exception:
+                item["_desc"] = None
         if HAS_PIL:
             try:
                 img = Image.open(config.asset_path(config.BACKDROP_IMAGE))
                 for frame in ImageSequence.Iterator(img):
                     frame = frame.convert("RGBA")
+                    if config.BACKDROP_GRAYSCALE:
+                        frame = frame.convert("L").convert("RGBA")
+                    if getattr(config, "BACKDROP_DARKEN", 1.0) < 1.0:
+                        frame = ImageEnhance.Brightness(frame).enhance(
+                            config.BACKDROP_DARKEN)
                     if config.BACKDROP_BLUR_RADIUS > 0:
                         frame = frame.filter(
                             ImageFilter.GaussianBlur(config.BACKDROP_BLUR_RADIUS))
@@ -157,6 +183,36 @@ class App:
         return pygame.transform.scale(
             surf, (max(1, int(sw * scale)), max(1, int(sh * scale))))
 
+    @staticmethod
+    def _surf_bytes(surf):
+        """RGBA bytes for a surface (pygame-ce + classic pygame compatible)."""
+        if hasattr(pygame.image, "tobytes"):
+            return pygame.image.tobytes(surf, "RGBA")
+        return pygame.image.tostring(surf, "RGBA")
+
+    def _build_glow(self, surf, scale=1.0):
+        """Soft halo that follows the sprite silhouette (HOVER_RING colour).
+        Returns None if no sprite or PIL is unavailable."""
+        if surf is None or not HAS_PIL:
+            return None
+        try:
+            pad = 28
+            scaled = self.fit_image(surf, self.art_size * scale)
+            sw, sh = scaled.get_size()
+            canvas = pygame.Surface((sw + 2 * pad, sh + 2 * pad),
+                                    pygame.SRCALPHA)
+            canvas.blit(scaled, (pad, pad))
+            img = Image.frombytes("RGBA", canvas.get_size(),
+                                  self._surf_bytes(canvas))
+            r, g, b = config.HOVER_RING
+            tint = Image.new("RGBA", img.size, (r, g, b, 255))
+            tint.putalpha(img.getchannel("A"))
+            glow = tint.filter(
+                ImageFilter.GaussianBlur(config.GLOW_BLUR_RADIUS))
+            return pygame.image.frombuffer(glow.tobytes(), glow.size, "RGBA")
+        except Exception:
+            return None
+
     def grid_to_screen(self, gx, gy):
         return (int(gx * self.scale_x), int(gy * self.scale_y))
 
@@ -196,23 +252,34 @@ class App:
 
     def render_item(self, item, hovered):
         cx, cy = self.grid_to_screen(item["x"], item["y"])
+        # Pop: on hover, lift the item up, scale it bigger, and show a
+        # floating name tag above it
+        size_k = 1.0 + (config.HOVER_POP if hovered else 0.0)
+        art_k = item.get("_art_k", 1.0)
+        art_target = int(self.art_size * art_k * size_k)
         if hovered:
-            pygame.draw.circle(self.screen, config.HOVER_RING, (cx, cy),
-                               int(self.radius + 12), 3)
-            pygame.draw.circle(self.screen, config.HOVER_RING, (cx, cy),
-                               int(self.radius + 22), 2)
+            cy -= config.HOVER_LIFT
         surf = item.get("_surf")
+        if hovered:
+            glow = item.get("_glow")
+            if surf and glow:
+                g = self.fit_image(glow, int(glow.get_width() * size_k))
+                self.screen.blit(g, g.get_rect(center=(cx, cy)))
+            if not surf:
+                pygame.draw.circle(self.screen, config.HOVER_RING, (cx, cy),
+                                   int(self.radius + 6), 3)
         if surf:
-            scaled = self.fit_image(surf, self.art_size)
+            scaled = self.fit_image(surf, art_target)
             self.screen.blit(scaled, scaled.get_rect(center=(cx, cy)))
         else:
             pygame.draw.circle(self.screen, item["color"], (cx, cy),
                                int(self.radius))
             pygame.draw.circle(self.screen, config.ITEM_EDGE, (cx, cy),
                                int(self.radius), 3)
-        name_color = config.HOVER_RING if hovered else config.TEXT
-        self.text(item["name"], config.BODY_FONT, name_color,
-                  (cx, cy + int(self.radius) + 30), shadow=True)
+        if hovered:
+            tag_y = max(cy - self.art_size * art_k * size_k / 2 - 30, 28)
+            self.text(item["name"], config.BODY_FONT, config.HOVER_RING,
+                      (cx, tag_y), shadow=True)
 
     def render_cursor(self, gpos):
         cx, cy = self.grid_to_screen(*gpos)
@@ -229,69 +296,138 @@ class App:
         dim.fill((0, 0, 0, config.DIM_ALPHA))
         self.screen.blit(dim, (0, 0))
 
-        pw = int(self.w * config.MENU_RATIO_W)
-        ph = int(self.h * config.MENU_RATIO_H)
+        pw = int(self.w * config.DESC_RATIO_W)
+        ph = int(self.h * config.DESC_RATIO_H)
+        px = (self.w - pw) // 2
+        py = (self.h - ph) // 2
+
+        desc = item.get("_desc")
+        if desc:
+            sw, sh = desc.get_size()
+            scale = min(pw / sw, ph / sh)
+            scaled = pygame.transform.scale(
+                desc, (max(1, int(sw * scale)), max(1, int(sh * scale))))
+            self.screen.blit(scaled, scaled.get_rect(center=(self.w // 2,
+                                                             self.h // 2)))
+        else:
+            # Fallback: drawn panel (kept for deployments without the PNGs)
+            panel = pygame.Rect(px, py, pw, ph)
+            pygame.draw.rect(self.screen, config.PANEL_BG, panel,
+                             border_radius=10)
+            pygame.draw.rect(self.screen, config.PANEL_BORDER, panel, 3,
+                             border_radius=10)
+            self.text(item["name"], config.TITLE_FONT, config.HOVER_RING,
+                      (self.w // 2, py + 90), shadow=True)
+            text_x = px + config.MENU_PAD
+            text_w = pw - 2 * config.MENU_PAD
+            font = self.font(config.BODY_FONT)
+            lines = wrap_text(font, item["history"], text_w)
+            line_h = font.get_linesize() + 8
+            y = py + ph // 2 - (len(lines) * line_h) // 2
+            for line in lines:
+                self.text(line, config.BODY_FONT, config.TEXT, (text_x, y),
+                          center=False)
+                y += line_h
+
+        self.text("klik mana-mana untuk tutup", config.HINT_FONT,
+                  config.MUTED, (self.w // 2, py + ph - config.MENU_PAD - 6),
+                  shadow=True)
+
+    def _emoji_surf(self, emoji, size):
+        """Best-effort color emoji surface (pygame-ce freetype). None if the
+        system has no usable emoji font, so callers can fall back."""
+        try:
+            import pygame.freetype as ft
+            for name in ("notocoloremoji", "segoeuiemoji", "applecoloremoji",
+                         "openmoji"):
+                path = pygame.font.match_font(name)
+                if not path:
+                    continue
+                surf, _ = ft.Font(path, size).render(emoji, fgcolor=None)
+                if surf.get_width() > 0:
+                    return surf
+        except Exception:
+            pass
+        return None
+
+    def render_help(self):
+        dim = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, config.DIM_ALPHA))
+        self.screen.blit(dim, (0, 0))
+
+        pw = int(self.w * 0.6)
+        ph = int(self.h * 0.5)
         px = (self.w - pw) // 2
         py = (self.h - ph) // 2
         panel = pygame.Rect(px, py, pw, ph)
         pygame.draw.rect(self.screen, config.PANEL_BG, panel, border_radius=10)
         pygame.draw.rect(self.screen, config.PANEL_BORDER, panel, 3,
                          border_radius=10)
-        pygame.draw.rect(self.screen, config.MUTED,
-                         panel.inflate(-16, -16), 1, border_radius=8)
 
-        left_w = int(pw * 0.38)
-        col_x = px + config.MENU_PAD
-        tcx = col_x + left_w // 2
-        tcy = py + ph // 2 - 60
-        surf = item.get("_surf")
-        if surf:
-            scaled = self.fit_image(surf, config.THUMB_SIZE)
-            self.screen.blit(scaled, scaled.get_rect(center=(tcx, tcy)))
-        else:
-            thumb_r = config.THUMB_SIZE // 2
-            pygame.draw.circle(self.screen, item["color"], (tcx, tcy), thumb_r)
-            pygame.draw.circle(self.screen, config.ITEM_EDGE, (tcx, tcy),
-                               thumb_r, 4)
-        self.text(item["name"], config.TITLE_FONT, config.HOVER_RING,
-                  (tcx, tcy + config.THUMB_SIZE // 2 + 46), shadow=True)
-        pygame.draw.line(self.screen, config.ITEM_EDGE,
-                         (px + left_w + 12, py + config.MENU_PAD),
-                         (px + left_w + 12, py + ph - config.MENU_PAD), 2)
+        cx = self.w // 2
+        self.text("Cara Bermain", config.TITLE_FONT, config.HOVER_RING,
+                  (cx, py + 80), shadow=True)
 
-        text_x = px + left_w + config.MENU_PAD + 20
-        text_w = px + pw - config.MENU_PAD - text_x
-        font = self.font(config.BODY_FONT)
-        lines = wrap_text(font, item["history"], text_w)
-        line_h = font.get_linesize() + 8
-        y = py + ph // 2 - (len(lines) * line_h) // 2
-        for line in lines:
-            self.text(line, config.BODY_FONT, config.TEXT, (text_x, y),
-                      center=False)
-            y += line_h
+        rows = [
+            ("\U0001F590", "Gerak tangan untuk gerak kursor"),
+            ("\U0001F90F", "Cubit untuk pilih item"),
+        ]
+        row_y = py + 190
+        for emo, label in rows:
+            ex = cx - 250
+            emo_surf = self._emoji_surf(emo, 64)
+            if emo_surf:
+                self.screen.blit(emo_surf, emo_surf.get_rect(center=(ex, row_y)))
+            else:
+                pygame.draw.circle(self.screen, config.MUTED, (ex, row_y), 26, 3)
+            tx = cx - 150
+            tw = px + pw - config.MENU_PAD - tx
+            lines = wrap_text(self.font(config.BODY_FONT), label, tw)
+            ly = row_y - ((len(lines) - 1) * 44) // 2
+            for ln in lines:
+                self.text(ln, config.BODY_FONT, config.TEXT, (tx, ly),
+                          center=False)
+                ly += 44
+            row_y += 120
 
-        self.text("klik mana-mana untuk tutup", config.HINT_FONT,
-                  config.MUTED, (px + pw // 2, py + ph - config.MENU_PAD - 6))
+        self.text("Klik di mana-mana atau tekan ESC untuk tutup",
+                  config.HINT_FONT, config.MUTED, (cx, py + ph - 50),
+                  shadow=True)
 
     def render(self, gpos):
         self.render_stall()
         hovered = self.hit_test(gpos) if self.selected is None else None
+        # Draw all items at rest first, then the roof on top of the pole
+        # items, then the hovered item last so it pops in front of the roof.
         for item in config.ITEMS:
-            self.render_item(item, hovered is item)
+            if item is not hovered:
+                self.render_item(item, False)
+        if self._roof:
+            self.screen.blit(self._roof, (0, 0))
+        if hovered:
+            self.render_item(hovered, True)
         self.render_cursor(gpos)
         if self.selected is not None:
             self.render_menu(self.selected)
+        elif self.help_visible:
+            self.render_help()
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
+                self.last_action = time.time()
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    if self.help_visible:
+                        self.help_visible = False
+                    else:
+                        self.running = False
                 elif event.key == pygame.K_f:
                     self.fullscreen = not self.fullscreen
                     self._set_mode()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.last_action = time.time()
 
     async def run(self, max_frames=None):
         frame = 0
@@ -300,6 +436,16 @@ class App:
             self.handle_events()
             gpos = self.pointer.position()
             clicked = self.pointer.just_clicked()
+            if (clicked or (self.last_gpos is not None and
+                            abs(gpos[0] - self.last_gpos[0]) +
+                            abs(gpos[1] - self.last_gpos[1]) > 0.02)):
+                self.last_action = time.time()
+            self.last_gpos = gpos
+
+            if (not self.help_visible and self.selected is None and
+                    time.time() - self.last_action > config.IDLE_HELP_DELAY):
+                self.help_visible = True
+                self.last_action = time.time()
 
             if self._gif_frames:
                 self._gif_acc += dt
@@ -309,7 +455,10 @@ class App:
                     self._gif_index = (self._gif_index + 1) % len(self._gif_frames)
                     self._compose_bg()
 
-            if self.selected is not None:
+            if self.help_visible:
+                if clicked:
+                    self.help_visible = False
+            elif self.selected is not None:
                 if clicked:
                     self.selected = None
             else:

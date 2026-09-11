@@ -6,3 +6,7 @@ build/version.txt
 build/web-cache/
 
 # build/web is committed for Vercel static deploy
+
+# test artifacts
+.playwright-mcp/
+pasar-web.png
